@@ -132,13 +132,15 @@ class Plugin(EcosystemMixin, MaiBotPlugin):
             self.affinity.rows, key=lambda key: self.affinity.offset(key, self.config.affinity), reverse=True
         )[:5]
         names = {(person.platform, person.user_id): person.name or "已标定联系人" for person in people}
+        kind_labels = {"group": "群聊", "private": "私聊"}
         top = [
-            f"{names.get(key[:2], '未标定联系人')}({key[2]}) +{self.affinity.offset(key, self.config.affinity):.2f}"
+            f"{names.get(key[:2], '未标定联系人')}（{kind_labels.get(key[2], key[2])}热络 +{self.affinity.offset(key, self.config.affinity):.2f}）"
             for key in active
+            if self.affinity.offset(key, self.config.affinity) > 0
         ]
         return (
-            f"人工关系：{sum(not row.is_bot for row in people)}；同行 Bot：{sum(row.is_bot for row in people)}\n"
-            f"公共集合：{len(self.config.group_sets)}；管理员身份不展示\n热络偏移：" + "；".join(top)
+            f"已登记联系人：{sum(not row.is_bot for row in people)} 位熟人 · {sum(row.is_bot for row in people)} 个同行 Bot · {len(self.config.group_sets)} 个公共集合（管理员名单永不入对话）\n"
+            + (f"近期热络升温：{'；'.join(top)}" if top else "近期热络升温：暂无明显升温（都在基准线上）")
         )
 
     def weight(self, platform, user_ids, scope_kind="group"):
