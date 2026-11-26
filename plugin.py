@@ -231,6 +231,7 @@ class Plugin(EcosystemMixin, MaiBotPlugin):
                 self.frequency_owned[stream] = (original, desired)
 
     async def frequency_loop(self):
+        await asyncio.sleep(3)
         while True:
             try:
                 await self.frequency_tick()

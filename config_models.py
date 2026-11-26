@@ -5,60 +5,246 @@ from .ecosystem import ScopeConfig, anchor
 
 
 class TagDef(PluginConfigBase):
-    tag: str = Field(default="", description="唯一标签名")
-    prompt_template: str = Field(default="{name}：{tag} {custom_note}", description="关系提示模板")
-    base_affinity: float = Field(default=0.5, ge=0, le=1, description="人工热络度锚点")
-    weight_multiplier: float = Field(default=1, ge=0.1, le=2, description="回复意愿权重")
-    privacy_relax: float = Field(default=0, ge=0, le=1, description="松口加成")
+    tag: str = Field(
+        default="",
+        description="关系标签名字，例如 老熟人、损友、同行Bot。",
+        json_schema_extra={"label": "标签名", "placeholder": "例如 老熟人"},
+    )
+    prompt_template: str = Field(
+        default="{name}：{tag} {custom_note}",
+        description="给这个标签的人写一句说话感觉提示；可用 {name}、{custom_note}、{owner_name}、{bot_role}。",
+        json_schema_extra={"label": "标签语气提示"},
+    )
+    base_affinity: float = Field(
+        default=0.5,
+        ge=0,
+        le=1,
+        description="这个关系天然的亲疏基准（0 到 1）。",
+        json_schema_extra={"label": "基础亲疏度"},
+    )
+    weight_multiplier: float = Field(
+        default=1,
+        ge=0.1,
+        le=2,
+        description="和这类人聊天时的说话意愿倍率；1.0 不变，大于 1 更爱搭话，小于 1 更克制。",
+        json_schema_extra={"label": "搭话意愿倍率"},
+    )
+    privacy_relax: float = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="面对这类人追问隐私兜着项时，额外放宽的松口幅度。",
+        json_schema_extra={"label": "松口加成"},
+    )
 
 
 def default_tags():
     return [
-        TagDef(tag="普通群友", base_affinity=0.5, weight_multiplier=1.0),
-        TagDef(tag="老熟人", base_affinity=0.8, weight_multiplier=1.22, privacy_relax=0.25),
-        TagDef(tag="损友", base_affinity=0.7, weight_multiplier=1.12, privacy_relax=0.15),
-        TagDef(tag="同行Bot", base_affinity=0.5, weight_multiplier=0.5),
+        TagDef(
+            tag="普通群友",
+            prompt_template="{name}：群里常聊的朋友 {custom_note}",
+            base_affinity=0.5,
+            weight_multiplier=1.0,
+        ),
+        TagDef(
+            tag="老熟人",
+            prompt_template="{name}：很熟的老朋友，聊起来自在放松就行 {custom_note}",
+            base_affinity=0.8,
+            weight_multiplier=1.22,
+            privacy_relax=0.25,
+        ),
+        TagDef(
+            tag="损友",
+            prompt_template="{name}：熟到能互相吐槽开玩笑的损友 {custom_note}",
+            base_affinity=0.7,
+            weight_multiplier=1.12,
+            privacy_relax=0.15,
+        ),
+        TagDef(
+            tag="同行Bot",
+            prompt_template="{name}：{owner_name}家的{bot_role}，正常搭话调侃但别互相复读 {custom_note}",
+            base_affinity=0.5,
+            weight_multiplier=0.5,
+        ),
     ]
 
 
 class AffinityConfig(PluginConfigBase):
     __ui_label__ = "动态热络度"
-    enabled: bool = Field(default=True, description="启用温和动态热络度")
-    timezone: str = Field(default="Asia/Shanghai", description="单日增益的本地时区")
-    active_hint: str = Field(default="最近聊得热络", description="可选动态热络提示")
-    show_dynamic_hint: bool = Field(default=False, description="在关系上下文附加简短热络状态")
-    half_life_days: float = Field(default=7, gt=0, le=365, description="回归人工锚点半衰期")
-    day_gain: float = Field(default=0.04, ge=0, le=0.2, description="单日对数增益系数")
-    quality_saturation: float = Field(default=15, ge=1, le=100, description="每天有效回合饱和数")
-    min_text_chars: int = Field(default=4, ge=1, le=100, description="有效文本最短字数")
-    window_minutes: float = Field(default=10, gt=0, le=1440, description="近期参与权重半衰期")
-    max_entries: int = Field(default=1024, ge=1, le=10000, description="动态联系人状态上限")
-    seen_messages: int = Field(default=2048, ge=1, le=10000, description="消息去重上限")
-    min_weight: float = Field(default=0.5, ge=0.1, le=1, description="权重下限，保留同行 Bot 降权")
-    max_weight: float = Field(default=1.3, ge=1, le=2, description="权重上限")
-    dynamic_weight_scale: float = Field(default=0.3, ge=0, le=1, description="动态偏移对频率的影响")
-    stranger_weight: float = Field(default=0.85, ge=0.1, le=2, description="未标定用户基础权重")
-    fallback_frequency_enabled: bool = Field(default=True, description="未启用 mai-day 时写入关系频率")
-    tick_seconds: float = Field(default=30, ge=5, le=300, description="频率协调后台周期")
+    enabled: bool = Field(
+        default=True,
+        description="根据近期有效互动柔和微调亲疏感觉，长期不聊会自动回到人工设定的基准。",
+        json_schema_extra={"label": "启用热络度"},
+    )
+    timezone: str = Field(
+        default="Asia/Shanghai",
+        description="单日增益的本地时区",
+        json_schema_extra={"label": "统计时区", "hidden": True},
+    )
+    active_hint: str = Field(
+        default="最近聊得挺热乎",
+        description="近期互动明显升温时，附在关系提示后的短语。",
+        json_schema_extra={"label": "热络提示语"},
+    )
+    show_dynamic_hint: bool = Field(
+        default=False,
+        description="开启后，关系近期升温时会把上面那句短语带进对话提示里。",
+        json_schema_extra={"label": "提示里带上热络语"},
+    )
+    half_life_days: float = Field(
+        default=7,
+        gt=0,
+        le=365,
+        description="多久没怎么聊之后，升温出来的热络感会减半回落。",
+        json_schema_extra={"label": "回落半衰期（天）"},
+    )
+    day_gain: float = Field(
+        default=0.04,
+        ge=0,
+        le=0.2,
+        description="单日对数增益系数",
+        json_schema_extra={"label": "单日增益上限", "hidden": True},
+    )
+    quality_saturation: float = Field(
+        default=15,
+        ge=1,
+        le=100,
+        description="每天有效回合饱和数",
+        json_schema_extra={"label": "单日有效饱和数", "hidden": True},
+    )
+    min_text_chars: int = Field(
+        default=4,
+        ge=1,
+        le=100,
+        description="有效文本最短字数",
+        json_schema_extra={"label": "有效消息字数", "hidden": True},
+    )
+    window_minutes: float = Field(
+        default=10,
+        gt=0,
+        le=1440,
+        description="近期发言的人在几分钟内继续影响当前聊天氛围权重。",
+        json_schema_extra={"label": "氛围延续分钟"},
+    )
+    max_entries: int = Field(
+        default=1024,
+        ge=1,
+        le=10000,
+        description="动态联系人状态上限",
+        json_schema_extra={"label": "状态缓存上限", "hidden": True},
+    )
+    seen_messages: int = Field(
+        default=2048,
+        ge=1,
+        le=10000,
+        description="消息去重上限",
+        json_schema_extra={"label": "消息去重上限", "hidden": True},
+    )
+    min_weight: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=1,
+        description="关系加权后最低降到的倍率。",
+        json_schema_extra={"label": "权重下限"},
+    )
+    max_weight: float = Field(
+        default=1.3,
+        ge=1,
+        le=2,
+        description="关系加权后最高抬到的倍率。",
+        json_schema_extra={"label": "权重上限"},
+    )
+    dynamic_weight_scale: float = Field(
+        default=0.3,
+        ge=0,
+        le=1,
+        description="动态偏移对频率的影响",
+        json_schema_extra={"label": "动态调权幅度", "hidden": True},
+    )
+    stranger_weight: float = Field(
+        default=0.85,
+        ge=0.1,
+        le=2,
+        description="完全没在熟人名单里的人说话时使用的默认搭话倍率。",
+        json_schema_extra={"label": "路人默认倍率"},
+    )
+    fallback_frequency_enabled: bool = Field(
+        default=True,
+        description="没装麦的一天时，由本插件直接接管关系倍率调整。",
+        json_schema_extra={"label": "独立调节频率"},
+    )
+    tick_seconds: float = Field(
+        default=30,
+        ge=5,
+        le=300,
+        description="频率协调后台周期",
+        json_schema_extra={"label": "协调周期秒数", "hidden": True},
+    )
 
 
 class Person(PluginConfigBase):
-    platform: str = Field(default="qq", description="平台")
-    user_id: str = Field(default="", description="平台用户标识")
-    name: str = Field(default="", description="称呼")
-    tags: list[str] = Field(default_factory=list, description="一人可挂多个标签")
-    relation_tag: str = Field(default="", description="人工关系标签")
-    is_bot: bool = Field(default=False, description="同行 Bot")
-    owner_name: str = Field(default="", description="归属人物称呼")
-    bot_role: str = Field(default="", description="同行角色")
-    custom_note: str = Field(default="", description="人工备注")
-    persona_master: bool = Field(default=False, description="对话中的老熟人；与管理员身份无关")
+    platform: str = Field(
+        default="qq",
+        description="所在平台，QQ 保持默认即可。",
+        json_schema_extra={"label": "平台"},
+    )
+    user_id: str = Field(
+        default="",
+        description="对方的 QQ 号或平台账号。",
+        json_schema_extra={"label": "用户账号", "placeholder": "例如 987654"},
+    )
+    name: str = Field(
+        default="",
+        description="平时怎么称呼对方。",
+        json_schema_extra={"label": "称呼", "placeholder": "例如 阿云"},
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="贴一个或多个上面定义过的标签名。",
+        json_schema_extra={"label": "关系标签", "placeholder": "例如 老熟人"},
+    )
+    relation_tag: str = Field(
+        default="",
+        description="旧版单标签兼容字段。",
+        json_schema_extra={"label": "兼容旧标签", "hidden": True},
+    )
+    is_bot: bool = Field(
+        default=False,
+        description="如果是群里的其他 Bot，请勾上；其他插件也能据此避开复读与学习污染。",
+        json_schema_extra={"label": "是同行 Bot"},
+    )
+    owner_name: str = Field(
+        default="",
+        description="仅同行 Bot 填写：这是谁家的 Bot。",
+        json_schema_extra={"label": "谁家的 Bot", "placeholder": "例如 阿明"},
+    )
+    bot_role: str = Field(
+        default="",
+        description="仅同行 Bot 填写：它大致是什么角色。",
+        json_schema_extra={"label": "Bot 定位", "placeholder": "例如 群管"},
+    )
+    custom_note: str = Field(
+        default="",
+        description="补充一点关于这个人的硬备注。",
+        json_schema_extra={"label": "补充备注", "placeholder": "例如 经常半夜在线"},
+    )
+    persona_master: bool = Field(
+        default=False,
+        description="对话层老熟人标记（只影响聊天亲切感，不开放管理命令权限）。",
+        json_schema_extra={"label": "对话老熟人"},
+    )
 
 
 class GroupSet(PluginConfigBase):
-    name: str = Field(default="", description="公共集合名称；以 @set:名称 引用")
+    name: str = Field(
+        default="",
+        description="给一组常一起用的群或人起个外号；其他插件填 @set:外号 就能直接引用。",
+        json_schema_extra={"label": "集合名称", "placeholder": "例如 观察群"},
+    )
     members: list[str] = Field(
-        default_factory=list, description="group/private/user 对象；可含平台前缀，不嵌套集合"
+        default_factory=list,
+        description="直接填 QQ 群号，或写 private:QQ号、user:QQ号。",
+        json_schema_extra={"label": "包含成员", "placeholder": "例如 123456"},
     )
 
     @field_validator("members")
@@ -70,8 +256,16 @@ class GroupSet(PluginConfigBase):
 
 
 class Admin(PluginConfigBase):
-    platform: str = Field(default="qq", description="平台")
-    user_id: str = Field(default="", description="管理员用户标识")
+    platform: str = Field(
+        default="qq",
+        description="平台名称，默认 qq。",
+        json_schema_extra={"label": "平台"},
+    )
+    user_id: str = Field(
+        default="",
+        description="有权使用管理命令的账号（只做程序鉴权，永不放进聊天提示词）。",
+        json_schema_extra={"label": "管理员账号", "placeholder": "例如 987654"},
+    )
 
 
 class PluginInfo(PluginConfigBase):
@@ -79,22 +273,66 @@ class PluginInfo(PluginConfigBase):
 
 
 class Config(PluginConfigBase):
-    scope: ScopeConfig = Field(default_factory=ScopeConfig, description="独立会话与用户生效范围")
-    show_advanced: bool = Field(default=False, description="显示高级设置")
-    plugin: PluginInfo = Field(default_factory=PluginInfo)
-    enabled: bool = Field(default=True, description="启用插件")
-    tags: list[TagDef] = Field(default_factory=default_tags, description="标签定义与提示词字典")
-    affinity: AffinityConfig = Field(default_factory=AffinityConfig)
-    group_sets: list[GroupSet] = Field(default_factory=list, description="全生态复用的公共会话和用户集合")
-    people: list[Person] = Field(default_factory=list, description="人工静态关系")
-    admins: list[Admin] = Field(default_factory=list, description="程序鉴权名单，不进入 Prompt")
-    master_persona_hint: str = Field(default="最铁的老熟人", description="对话层熟人提示")
-    relation_template: str = Field(default="{name}：{relation_tag} {custom_note}", description="关系渲染")
-    bot_template: str = Field(
-        default="{name}：{owner_name}家的{bot_role}；{custom_note}", description="同行渲染"
+    scope: ScopeConfig = Field(default_factory=ScopeConfig, description="独立控制哪些群或人启用群关系")
+    show_advanced: bool = Field(
+        default=False,
+        description="展开管理员名单、提示上限与兼容模板。",
+        json_schema_extra={"label": "显示高级设置"},
     )
-    master_template: str = Field(default="{name}：{master_persona_hint}", description="熟人渲染")
-    hint_chars: int = Field(default=100, ge=0, le=200, description="关系提示最大字数")
+    plugin: PluginInfo = Field(default_factory=PluginInfo)
+    enabled: bool = Field(
+        default=True,
+        description="开启后识别名单内的熟人与同行 Bot。",
+        json_schema_extra={"label": "启用群关系"},
+    )
+    tags: list[TagDef] = Field(
+        default_factory=default_tags,
+        description="先定义好每种关系标签对应的语气提示和说话倍率。",
+        json_schema_extra={"label": "关系标签字典"},
+    )
+    affinity: AffinityConfig = Field(default_factory=AffinityConfig)
+    group_sets: list[GroupSet] = Field(
+        default_factory=list,
+        description="维护常用的群/私聊合集，方便其余插件直接用 @set:名称 一处复用。",
+        json_schema_extra={"label": "公共集合"},
+    )
+    people: list[Person] = Field(
+        default_factory=list,
+        description="登记熟人、群友或同行 Bot。",
+        json_schema_extra={"label": "人物名单"},
+    )
+    admins: list[Admin] = Field(
+        default_factory=list,
+        description="有权执行 /关系、/待办、/唤醒 等管理命令的账号；仅程序校验，不进入聊天提示词。",
+        json_schema_extra={"label": "管理命令鉴权名单"},
+    )
+    master_persona_hint: str = Field(
+        default="最铁的老熟人",
+        description="旧版老熟人提示兼容模板。",
+        json_schema_extra={"label": "兼容熟人短语", "hidden": True},
+    )
+    relation_template: str = Field(
+        default="{name}：{relation_tag} {custom_note}",
+        description="旧版关系模板兼容字段。",
+        json_schema_extra={"label": "兼容关系模板", "hidden": True},
+    )
+    bot_template: str = Field(
+        default="{name}：{owner_name}家的{bot_role}；{custom_note}",
+        description="旧版同行 Bot 模板兼容字段。",
+        json_schema_extra={"label": "兼容同行模板", "hidden": True},
+    )
+    master_template: str = Field(
+        default="{name}：{master_persona_hint}",
+        description="旧版熟人模板兼容字段。",
+        json_schema_extra={"label": "兼容熟人模板", "hidden": True},
+    )
+    hint_chars: int = Field(
+        default=100,
+        ge=0,
+        le=200,
+        description="多人同时出现时注入关系提示的最大总字数。",
+        json_schema_extra={"label": "关系提示字数上限"},
+    )
 
     @model_validator(mode="after")
     def unique_sets(self):
@@ -109,7 +347,6 @@ class Config(PluginConfigBase):
         return self
 
 
-# SDK 2.23 supports conditional fields; keep the first-use form small.
 _BASIC_FIELDS = ["enabled", "tags", "people", "group_sets", "show_advanced"]
 for _name, _field in Config.model_fields.items():
     if _name not in _BASIC_FIELDS and _name != "plugin":
@@ -120,8 +357,6 @@ for _name, _field in Config.model_fields.items():
         }
 Config.model_rebuild(force=True)
 
-
-# SDK labels otherwise fall back to Python field names in top-level sections.
 for _model in list(globals().values()):
     if isinstance(_model, type) and issubclass(_model, PluginConfigBase):
         for _field_name, _field_info in _model.model_fields.items():

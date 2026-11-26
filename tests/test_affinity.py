@@ -37,5 +37,5 @@ async def test_multitag_weight_relax_and_bot_deweight_are_configured():
     assert abs(weight["weight"] - 1.17) < 1e-8
     assert weight["relax_bonus"] > 0
     assert (await plugin.api_weight("qq", ["bot"]))["data"]["weight"] == 0.5
-    assert "老熟人" in plugin.context("qq", ["friend"])
+    assert "老朋友" in plugin.context("qq", ["friend"])
     assert "损友" in plugin.context("qq", ["friend"])

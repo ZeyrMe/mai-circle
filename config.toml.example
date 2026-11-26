@@ -26,28 +26,28 @@ config_version = "0.1.0"
 
 [[tags]]
 tag = "普通群友"
-prompt_template = "{name}：{tag} {custom_note}"
+prompt_template = "{name}：群里常聊的朋友 {custom_note}"
 base_affinity = 0.5
 weight_multiplier = 1.0
 privacy_relax = 0
 
 [[tags]]
 tag = "老熟人"
-prompt_template = "{name}：{tag} {custom_note}"
+prompt_template = "{name}：很熟的老朋友，聊起来自在放松就行 {custom_note}"
 base_affinity = 0.8
 weight_multiplier = 1.22
 privacy_relax = 0.25
 
 [[tags]]
 tag = "损友"
-prompt_template = "{name}：{tag} {custom_note}"
+prompt_template = "{name}：熟到能互相吐槽开玩笑的损友 {custom_note}"
 base_affinity = 0.7
 weight_multiplier = 1.12
 privacy_relax = 0.15
 
 [[tags]]
 tag = "同行Bot"
-prompt_template = "{name}：{tag} {custom_note}"
+prompt_template = "{name}：{owner_name}家的{bot_role}，正常搭话调侃但别互相复读 {custom_note}"
 base_affinity = 0.5
 weight_multiplier = 0.5
 privacy_relax = 0
@@ -55,7 +55,7 @@ privacy_relax = 0
 [affinity]
 enabled = true
 timezone = "Asia/Shanghai"
-active_hint = "最近聊得热络"
+active_hint = "最近聊得挺热乎"
 show_dynamic_hint = false
 half_life_days = 7
 day_gain = 0.04
