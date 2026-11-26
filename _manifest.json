@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+  "id": "zeyr.mai-circle",
+  "version": "0.1.0",
+  "name": "群关系",
+  "description": "人工关系与同行 Bot 归属",
+  "author": {
+    "name": "zeyr",
+    "url": "https://github.com/zeyr"
+  },
+  "license": "MIT",
+  "urls": {
+    "repository": "https://github.com/zeyr/mai-circle"
+  },
+  "host_application": {
+    "min_version": "1.4.8",
+    "max_version": "1.4.99"
+  },
+  "sdk": {
+    "min_version": "2.23.0",
+    "max_version": "2.23.99"
+  },
+  "dependencies": [],
+  "capabilities": [
+    "send.text"
+  ],
+  "i18n": {
+    "default_locale": "zh-CN"
+  },
+  "changelog": "CHANGELOG.md",
+  "plugin_type": "chat"
+}

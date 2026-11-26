@@ -1,0 +1,13 @@
+# Generated from config_models.py; instance config.toml stays local.
+show_advanced = false
+enabled = true
+people = []
+admins = []
+master_persona_hint = "最铁的老熟人"
+relation_template = "{name}：{relation_tag} {custom_note}"
+bot_template = "{name}：{owner_name}家的{bot_role}；{custom_note}"
+master_template = "{name}：{master_persona_hint}"
+hint_chars = 55
+
+[plugin]
+config_version = "0.1.0"
