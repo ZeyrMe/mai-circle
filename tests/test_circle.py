@@ -69,3 +69,29 @@ async def test_relation_confirmation_authorizes_only_exact_service_output(tmp_pa
         "zeyr.mai-day.revoke_service_send",
     ]
     assert api.call.await_args_list[0].kwargs == {"version": "1", "stream_id": "s", "text": "关系已记录"}
+
+
+async def test_public_sets_tags_and_local_scope_never_call_optional_apis():
+    plugin = make(
+        people=[{"user_id": "person", "tags": ["朋友", "同好"]}],
+        group_sets=[{"name": "常去", "members": ["group:room", "telegram:private:friend"]}],
+        scope={"mode": "whitelist", "groups": ["@set:常去"], "users": ["@tag:同好"]},
+    )
+    assert plugin.resolve_scope_ref("@set:常去") == {
+        "groups": ["qq:group:room"],
+        "privates": ["telegram:private:friend"],
+        "users": [],
+    }
+    assert plugin.resolve_scope_ref("@tag:朋友")["users"] == ["qq:user:person"]
+    assert await plugin.in_scope(
+        message={
+            "platform": "qq",
+            "message_info": {
+                "group_info": {"group_id": "room"},
+                "user_info": {"user_id": "stranger"},
+            },
+        }
+    )
+    assert (await plugin.api_scope_ref("@set:不存在"))["data"] == {"groups": [], "privates": [], "users": []}
+    plugin.config.enabled = False
+    assert not plugin.resolve_scope_ref("@set:常去")["groups"]

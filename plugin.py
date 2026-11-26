@@ -4,10 +4,11 @@ from maibot_sdk import API, Command, HookHandler, MaiBotPlugin, Tool
 from maibot_sdk.types import HookOrder, ToolParameterInfo
 
 from .config_models import Config, Person
+from .ecosystem import EcosystemMixin, anchor
 from .runtime import RecentMessages, StateFile, identity, inject, render, result, service_send
 
 
-class Plugin(MaiBotPlugin):
+class Plugin(EcosystemMixin, MaiBotPlugin):
     config_model = Config
 
     def __init__(self):
@@ -53,6 +54,37 @@ class Plugin(MaiBotPlugin):
                 lines.append(render(self.config.master_template, **values).strip())
         return "；".join(lines)
 
+    def resolve_scope_ref(self, ref):
+        data = {"groups": [], "privates": [], "users": []}
+        if not self.config.enabled:
+            return data
+        if ref.startswith("@set:"):
+            members = next((row.members for row in self.config.group_sets if row.name == ref[5:]), [])
+        elif ref.startswith("@tag:"):
+            members = [
+                f"{person.platform}:user:{person.user_id}"
+                for person in self.people()
+                if ref[5:] in person.tags or ref[5:] == person.relation_tag
+            ]
+        else:
+            return data
+        for member in members:
+            platform, kind, value = anchor(member)
+            key = {"group": "groups", "private": "privates", "user": "users"}[kind]
+            data[key].append(f"{platform}:{kind}:{value}")
+        return data
+
+    @API("resolve_scope_ref", public=True, version="1")
+    async def api_scope_ref(self, ref: str, **kwargs):
+        return result(self.resolve_scope_ref(ref))
+
+    def console_text(self):
+        people = self.people()
+        return (
+            f"人工关系：{sum(not row.is_bot for row in people)}；同行 Bot：{sum(row.is_bot for row in people)}\n"
+            f"公共集合：{len(self.config.group_sets)}；管理员身份不展示"
+        )
+
     @API("is_bot", public=True, version="1")
     async def api_bot(self, platform: str, user_id: str, **kwargs):
         return result(
@@ -83,11 +115,15 @@ class Plugin(MaiBotPlugin):
         visibility="visible",
     )
     async def query_relation(self, user: str, platform: str = "qq", **kwargs):
+        if not await self.in_scope(**kwargs):
+            return result(error="当前会话不在插件生效范围")
         ids = [p.user_id for p in self.people() if p.platform == platform and user in (p.user_id, p.name)]
         return result({"context": self.context(platform, ids)})
 
     @Command("relation", pattern=r"^/关系\s*\+\s*(?P<user>\S+)\s+(?P<tag>.+)$")
     async def relation(self, message=None, matched_groups=None, stream_id="", **kwargs):
+        if not await self.in_scope(message, stream_id=stream_id):
+            return False, "当前会话不在插件生效范围", 1
         platform, user, _, _ = identity(message or {})
         if not self.is_admin(platform, user):
             return False, "需要管理员权限", 1
@@ -113,7 +149,7 @@ class Plugin(MaiBotPlugin):
 
     @HookHandler("chat.receive.after_process")
     async def remember(self, message=None, **kwargs):
-        if self.config.enabled:
+        if self.config.enabled and await self.in_scope(message, **kwargs):
             self.recent.add(message or {})
         return {"action": "continue"}
 
@@ -135,10 +171,14 @@ class Plugin(MaiBotPlugin):
 
     @HookHandler("maisaka.planner.before_request", order=HookOrder.EARLY)
     async def planner(self, **kwargs):
+        if not await self.in_scope(**kwargs):
+            return {"action": "continue"}
         return inject(kwargs, "mai-circle", self.hint(kwargs), self.config.hint_chars)
 
     @HookHandler("maisaka.replyer.before_request", order=HookOrder.EARLY)
     async def replyer(self, **kwargs):
+        if not await self.in_scope(**kwargs):
+            return {"action": "continue"}
         return inject(kwargs, "mai-circle", self.hint(kwargs), self.config.hint_chars)
 
 
