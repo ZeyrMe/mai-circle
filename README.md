@@ -1,42 +1,98 @@
-# 群关系
+# 群关系 · `zeyr.mai-circle`
 
-`zeyr.mai-circle` · 人工关系与同行 Bot 归属。
+> 人工锚定的熟人谱系、同行 Bot 归属标记、非线性阻尼动态热络度，以及供全生态复用的 `@set:` 公共集合中心。
 
-开发基线 MaiBot 1.4.8 / SDK 2.23.0。可独立安装，其他 zeyr 插件仅通过公开 API 自动联动。
+![Version](https://img.shields.io/badge/version-0.2.0-green)
+![MaiBot](https://img.shields.io/badge/MaiBot-1.4.8%2B-blue)
+![SDK](https://img.shields.io/badge/SDK-2.23.0-teal)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-首批已实现：人工静态关系、同行 Bot 归属、独立的对话层 Master 人设、管理员鉴权、关系持久化、`is_bot`/`is_admin`/`filter_humans`/`get_mentions_context` API、`query_circle_relation` 工具，以及 EARLY 关系提示。管理员名单只用于程序鉴权，不进入提示词；动态画像仍交给宿主记忆系统。
+## 核心特性
 
-可用 `/关系 + <user_id> <relation_tag>` 追加关系。缺少本插件时其他插件会降级，不会阻止加载；本插件也可以单独运行。
+- **关系标签字典 + 一人多标签**：预置并允许自定义 `普通群友 / 老熟人 / 损友 / 同行Bot` 等标签（每个标签独立拥有专属提示词、基础亲疏度、说话倍率与松口加成），单个人物可同时挂载多个标签。
+- **同行 Bot 精确识别**：显式标记“谁家的什么 Bot”（`owner_name` + `bot_role`），供见闻、生活等插件跳过同行 Bot 发言、避免互刷复读，同时正常调侃搭话。
+- **双层 Master 严格隔离**：
+  - `admins` 仅用于程序层 `/关系`、`/待办`、`/唤醒` 等管理命令鉴权，**永远不进入大模型上下文**；
+  - 对话层仅通过标签引导亲切感，死守“不承认自己是 Bot”的拟真边界。
+- **非线性阻尼动态热络度（群聊/私聊分算）**：
+  - 坚决拒绝线性刷分——采用**单日有效回合对数饱和**（15 句认真互动接近饱和，刷屏 300 句水话无额外收益）+ **7 天半衰期回弹至人工锚点**，兼顾近期聊得投机与长期不变质的基线；
+  - 同一人在大群和一对一私聊的热络度分别核算。
+- **全生态公共集合 `@set:` 复用中心**：在一个插件里维护好 `观察群`、`熟人群` 等公共集合，其余 5 个插件直接填 `@set:观察群` 或 `@tag:同行Bot` 即可同步生效。
 
-仍需在已升级的真实 MaiBot 1.4.8 宿主上做 Hook/组件验收，当前离线测试不等同于生产上线。
+---
 
-安装时将整个目录同步到宿主 plugins；运行 config.toml 由 SDK 生成。实例名单、个人资料和密钥只填运行配置，不提交。
+## 安装与快速配置
 
-检查：`python -m pytest`，开发依赖见 pyproject.toml。
+将 `mai-circle/` 放入宿主 `plugins/` 目录并重启 MaiBot。支持独立安装；推荐在 WebUI 的卡片列表里添加标签、人物和公共集合。
 
+`config.toml` 示例（所有账号与群号请按实际情况填写，勿提交代码库）：
 
-## v2.5 第一批：范围与原生控制台
+```toml
+enabled = true
 
-新增独立 `[scope]`：mode 默认 all；groups / privates / users 接受 `group:标识` / `private:标识` / `user:标识`，可带平台前缀（默认 qq）。mode=whitelist 只允许命中对象；mode=blacklist 排除命中对象；all 允许所有对象。exclude 始终优先。allow_private=false 仅放行名单明确指定的私聊，主动私聊仍需单独配置目标。
+[[group_sets]]
+name = "观察群"
+members = ["111222333"]
 
-可用 `@set:名称` / `@tag:名称` 复用 mai-circle 集合/标签；缺席时按空集合降级，不影响直接对象。受限模式在没有真实会话身份时跳过业务，消息仍正常进入宿主。重启后的会话身份缓存由入站消息恢复。
+[[people]]
+user_id = "987654"
+name = "阿云"
+tags = ["老熟人"]
+persona_master = true
+custom_note = "经常半夜写代码"
 
-WebUI 配置页提供运行状态面板与“刷新公共集合缓存”按钮，不调用模型、不发送聊天。范围分组默认折叠；字段采用中文标签与结构化条目卡片。
+[[people]]
+user_id = "654321"
+name = "小Q"
+is_bot = true
+tags = ["同行Bot"]
+owner_name = "阿明"
+bot_role = "群管"
 
-新增 group_sets（名称 + 对象列表）与 resolve_scope_ref v1 API；人物 tags 可供 @tag: 引用；新版同时提供多标签话术与热络度。
+[[admins]]
+platform = "qq"
+user_id = "987654"
+```
 
-本批提供公共基础设施。后续业务能力见下方 0.2.0 说明。旧配置保持可读，Runner 规范化写回后采用新结构；回退旧代码前需恢复相应配置快照。实例 config.toml 仍不进入 Git。
+---
 
+## 工具、命令、接口与 WebUI 控制台
 
-## 0.2.0 · v2.5 业务增量
+### 对话工具（`@Tool`）
+| 工具名 | 参数 | 作用 |
+|---|---|---|
+| `query_circle_relation` | `user`, `platform="qq"` | 当对话提及不在场的第三方人物时，手动查询其人工关系或 Bot 归属（当前活跃发言人已自动轻量注入，不代替宿主动态记忆画像） |
 
-TagDef 多标签模板、权重与松口加成；group_sets 和 @tag: 解析；群/私聊分开的质量回合、单日对数饱和与指数回锚点，后台持久化。get_chat_weight 提供权重，mai-day 管辖的会话让位，未安装/停用/范围之外可独立写入频率。/关系 + 用户 标签1,标签2、/关系 列表、/关系 - 用户、/关系 bot 用户 归属称呼 角色 均需管理权限。控制台可重置动态热络度。
+### 管理命令（需在 `admins` 名单内）
+| 命令格式 | 效果 |
+|---|---|
+| `/关系 + <QQ号> <标签1,标签2>` | 为指定用户设置或更新人工关系标签 |
+| `/关系 bot <QQ号> <主人称呼> <角色定位>` | 快捷登记同行 Bot 及其归属 |
+| `/关系` 或 `/关系 列表` | 列出当前群关系里已登记的所有人物 |
+| `/关系 - <QQ号>` | 删除已记录的关系条目（支持对配置预设条目软删除） |
 
-接口保持 `@API(..., version="1")`，缺少可选插件时自动降级。模型生成、网络和宿主上下文效果仍需结合实例配置验收；离线测试不等同于真实聊天送达。
+### 对外联动接口（`@API(..., version="1")`）
+- `is_bot(platform, user_id)` / `is_admin(platform, user_id)` / `filter_humans(messages)`
+- `get_mentions_context(user_ids, platform, scope_kind="group")`
+- `get_chat_weight(platform, user_ids, scope_kind="group")`：输出对称说话权重与 `shy` 松口加成
+- `resolve_scope_ref(ref)`：解析 `@set:` 与 `@tag:` 引用
 
-## 开发与门禁
+### WebUI 运行时控制台（`config_widgets`）
+| 控件 | 类型 | 说明 |
+|---|---|---|
+| `运行状态与生效范围` | 实时状态 | 显示已登记人类熟人/同行 Bot 数量、已配置 `@set:` 集合以及近期热络联系人 |
+| `刷新公共集合缓存` | 一键按钮 | 刷新作用域集合缓存 |
+| `重置动态热络度` | 二次确认按钮 | 清空动态热络累积偏移，全部联系人恢复到人工标签锚点 |
 
-此目录由 MaiBot 直接加载，不使用 `pip install .`。单独拉取本仓即可安装固定的测试环境，不依赖父目录或其他仓库：
+---
+
+## 生态联动与注意事项
+
+- **与 `mai-day` 频率协调让位**：当 `mai-day` 在线并接管该会话时，`mai-circle` 自动让位给 `mai-day` 做 `时段权重 × 关系权重` 乘法合成；未装 `mai-day` 或该会话由 `mai-circle` 独立接手时，自动切换为独立调权。
+- **不替代宿主记忆**：本插件只处理“谁是谁家 Bot、硬关系与公共集合”，日常聊出来的印象记忆依然由 MaiBot 原生 A-Memorix 承担。
+
+<details>
+<summary>开发、门禁与安全审计（独立仓库维护）</summary>
 
 ```bash
 python3.13 -m venv .venv
@@ -44,25 +100,6 @@ python3.13 -m venv .venv
 .venv/bin/python scripts/check.py
 ```
 
-`check.py` 验证 Git 已跟踪文本的 UTF-8、行尾、末尾换行和尾随空格，然后运行 Ruff lint、Ruff 格式检查及全部 pytest。它不自动修复源码或重新生成示例配置；新增文件需先纳入 Git，才会参与文本检查。测试还验证示例配置与 SDK 默认值、manifest 身份/版本/运行依赖与 `pyproject.toml` 的一致性，以及已安装依赖是否满足声明。
+- 包含完整 Git 文本编码/换行/尾随空格检查、Ruff lint/format、`pytest`、依赖一致性检查及 `pip_audit` / `gitleaks` CI 流水线。
 
-GitHub Actions 在 push、pull request、手动触发和每周一运行：Python 3.12/3.13 验证、运行及开发依赖漏洞审计、Gitleaks 完整 Git 历史扫描。每仓独立执行，不调用共享 `tools`，不需要自定义密钥。Gitleaks 使用内置规则，固定 CLI 版本并校验下载 SHA-256；扫描日志隐藏发现的密钥值，不默认忽略历史发现。
-
-本地安全检查（Gitleaks CLI 版本与 CI 保持一致）：
-
-```bash
-.venv/bin/python -m pip_audit --strict --require-hashes --disable-pip -r .github/requirements-ci.txt
-gitleaks git --redact --log-opts="--all" .
-gitleaks dir --redact .
-```
-
-`.gitattributes` 统一文本 LF，Windows 批处理为 CRLF，并明确二进制资源；`.editorconfig` 统一编辑器编码、缩进和空白。Ruff 负责 Python 代码格式；JSON/TOML 由契约测试解析校验。实例配置和秘密不得提交。
-
-运行依赖范围与开发依赖在 `pyproject.toml` 中声明，`.github/requirements-ci.txt` 锁定 CI 的直接及间接依赖。修改依赖后，在仓库根目录使用 uv 重新解析并提交锁定文件；普通代码修改无需刷新依赖：
-
-```bash
-uv pip compile pyproject.toml --extra dev --universal --python-version 3.12 --generate-hashes --output-file .github/requirements-ci.txt
-# 有意升级到兼容范围内的新版本时，在上述命令后加 --upgrade。
-```
-
-Dependabot 每周检查 Python 依赖和 GitHub Actions 更新。接入 GitHub 后，在分支保护或 ruleset 中将 `Python 3.12`、`Python 3.13`、`Dependency audit`、`Gitleaks` 设为合并必需检查；只提交工作流文件不会自动开启分支保护。
+</details>
