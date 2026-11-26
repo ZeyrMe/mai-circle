@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "id": "zeyr.mai-circle",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "群关系",
   "description": "人工关系与同行 Bot 归属",
   "author": {
@@ -24,7 +24,9 @@
   "capabilities": [
     "send.text",
     "api.get",
-    "api.call"
+    "api.call",
+    "frequency.get_adjust",
+    "frequency.set_adjust"
   ],
   "i18n": {
     "default_locale": "zh-CN"

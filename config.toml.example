@@ -8,7 +8,7 @@ master_persona_hint = "最铁的老熟人"
 relation_template = "{name}：{relation_tag} {custom_note}"
 bot_template = "{name}：{owner_name}家的{bot_role}；{custom_note}"
 master_template = "{name}：{master_persona_hint}"
-hint_chars = 55
+hint_chars = 100
 
 [scope]
 mode = "all"
@@ -23,3 +23,50 @@ max_tracked_streams = 256
 
 [plugin]
 config_version = "0.1.0"
+
+[[tags]]
+tag = "普通群友"
+prompt_template = "{name}：{tag} {custom_note}"
+base_affinity = 0.5
+weight_multiplier = 1.0
+privacy_relax = 0
+
+[[tags]]
+tag = "老熟人"
+prompt_template = "{name}：{tag} {custom_note}"
+base_affinity = 0.8
+weight_multiplier = 1.22
+privacy_relax = 0.25
+
+[[tags]]
+tag = "损友"
+prompt_template = "{name}：{tag} {custom_note}"
+base_affinity = 0.7
+weight_multiplier = 1.12
+privacy_relax = 0.15
+
+[[tags]]
+tag = "同行Bot"
+prompt_template = "{name}：{tag} {custom_note}"
+base_affinity = 0.5
+weight_multiplier = 0.5
+privacy_relax = 0
+
+[affinity]
+enabled = true
+timezone = "Asia/Shanghai"
+active_hint = "最近聊得热络"
+show_dynamic_hint = false
+half_life_days = 7
+day_gain = 0.04
+quality_saturation = 15
+min_text_chars = 4
+window_minutes = 10
+max_entries = 1024
+seen_messages = 2048
+min_weight = 0.5
+max_weight = 1.3
+dynamic_weight_scale = 0.3
+stranger_weight = 0.85
+fallback_frequency_enabled = true
+tick_seconds = 30
