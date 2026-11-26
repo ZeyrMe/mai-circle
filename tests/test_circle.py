@@ -45,3 +45,27 @@ def test_relations_persist_separately_from_config(tmp_path):
     reloaded = make()
     reloaded.store = module.StateFile(store.path, {"schema_version": 1, "people": []})
     assert "同学" in reloaded.context("qq", ["a"])
+
+
+async def test_relation_confirmation_authorizes_only_exact_service_output(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    plugin = make(admins=[{"user_id": "admin"}])
+    plugin.store = module.StateFile(tmp_path / "relations.json", {"schema_version": 1, "people": []})
+    api = SimpleNamespace(
+        get=AsyncMock(return_value=True),
+        call=AsyncMock(return_value={"schema_version": 1, "success": True, "data": {"value": True}}),
+    )
+    plugin._set_context(SimpleNamespace(api=api, send=SimpleNamespace(text=AsyncMock(return_value=True))))
+    response = await plugin.relation(
+        message={"platform": "qq", "message_info": {"user_info": {"user_id": "admin"}}},
+        matched_groups={"user": "friend", "tag": "朋友"},
+        stream_id="s",
+    )
+    assert response[0]
+    assert [call.args[0] for call in api.call.await_args_list] == [
+        "zeyr.mai-day.authorize_service_send",
+        "zeyr.mai-day.revoke_service_send",
+    ]
+    assert api.call.await_args_list[0].kwargs == {"version": "1", "stream_id": "s", "text": "关系已记录"}

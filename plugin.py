@@ -4,7 +4,7 @@ from maibot_sdk import API, Command, HookHandler, MaiBotPlugin, Tool
 from maibot_sdk.types import HookOrder, ToolParameterInfo
 
 from .config_models import Config, Person
-from .runtime import RecentMessages, StateFile, identity, inject, render, result
+from .runtime import RecentMessages, StateFile, identity, inject, render, result, service_send
 
 
 class Plugin(MaiBotPlugin):
@@ -104,7 +104,11 @@ class Plugin(MaiBotPlugin):
             self.store.save()
         except (ValueError, KeyError) as exc:
             return False, str(exc), 1
-        await self.ctx.send.text("关系已记录", stream_id)
+        await service_send(
+            self.ctx,
+            "关系已记录",
+            stream_id,
+        )
         return True, "关系已记录", 2
 
     @HookHandler("chat.receive.after_process")

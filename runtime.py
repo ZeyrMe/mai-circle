@@ -154,3 +154,12 @@ async def optional_api(ctx: Any, full_name: str, **kwargs: Any) -> Any:
         return payload.get("data")
     except (Exception, TimeoutError):
         return None
+
+
+async def service_send(ctx: Any, text: str, stream_id: str, **kwargs: Any) -> Any:
+    """Authorize only this exact service output; day remains an optional dependency."""
+    await optional_api(ctx, "zeyr.mai-day.authorize_service_send", stream_id=stream_id, text=text)
+    try:
+        return await ctx.send.text(text, stream_id, **kwargs)
+    finally:
+        await optional_api(ctx, "zeyr.mai-day.revoke_service_send", stream_id=stream_id, text=text)
