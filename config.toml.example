@@ -55,7 +55,7 @@ privacy_relax = 0
 [affinity]
 enabled = true
 timezone = "Asia/Shanghai"
-active_hint = "最近聊得挺热乎"
+active_hint = "最近常聊"
 show_dynamic_hint = false
 half_life_days = 7
 day_gain = 0.04

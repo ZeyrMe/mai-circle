@@ -3,7 +3,7 @@
   "id": "zeyr.mai-circle",
   "version": "0.2.0",
   "name": "群关系",
-  "description": "人工关系与同行 Bot 归属",
+  "description": "可以自定义的人物标识和好感度系统",
   "author": {
     "name": "zeyr",
     "url": "https://github.com/zeyr"

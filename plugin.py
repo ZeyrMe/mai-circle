@@ -20,8 +20,8 @@ class Plugin(EcosystemMixin, MaiBotPlugin):
         ConfigWidget(
             id="reset_affinity",
             kind="action",
-            label="重置动态热络度",
-            confirmation="将所有动态热络度恢复到人工锚点？",
+            label="重置好感度",
+            confirmation="将所有动态好感度恢复到初始基准？",
         ),
     ]
 
@@ -134,13 +134,13 @@ class Plugin(EcosystemMixin, MaiBotPlugin):
         names = {(person.platform, person.user_id): person.name or "已标定联系人" for person in people}
         kind_labels = {"group": "群聊", "private": "私聊"}
         top = [
-            f"{names.get(key[:2], '未标定联系人')}（{kind_labels.get(key[2], key[2])}热络 +{self.affinity.offset(key, self.config.affinity):.2f}）"
+            f"{names.get(key[:2], '未标记联系人')}（{kind_labels.get(key[2], key[2])}好感度 +{self.affinity.offset(key, self.config.affinity):.2f}）"
             for key in active
             if self.affinity.offset(key, self.config.affinity) > 0
         ]
         return (
-            f"已登记联系人：{sum(not row.is_bot for row in people)} 位熟人 · {sum(row.is_bot for row in people)} 个同行 Bot · {len(self.config.group_sets)} 个公共集合（管理员名单永不入对话）\n"
-            + (f"近期热络升温：{'；'.join(top)}" if top else "近期热络升温：暂无明显升温（都在基准线上）")
+            f"已登记联系人：{sum(not row.is_bot for row in people)} 位熟人 · {sum(row.is_bot for row in people)} 个其他 Bot · {len(self.config.group_sets)} 个公共集合（管理员名单不进入对话）\n"
+            + (f"近期好感度升温：{'；'.join(top)}" if top else "近期好感度升温：暂无明显变化（都在基准线上）")
         )
 
     def weight(self, platform, user_ids, scope_kind="group"):
@@ -295,7 +295,7 @@ class Plugin(EcosystemMixin, MaiBotPlugin):
 
     @Tool(
         "query_circle_relation",
-        description="查人工标记的熟人关系或同行归属，不代替动态记忆画像。",
+        description="查询人物称呼、关系标签或是否为其他 Bot。",
         parameters=[ToolParameterInfo(name="user", description="人物称呼或平台用户标识")],
         visibility="visible",
     )

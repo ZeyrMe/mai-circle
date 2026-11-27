@@ -36,7 +36,7 @@ class TagDef(PluginConfigBase):
         default=0,
         ge=0,
         le=1,
-        description="面对这类人追问隐私兜着项时，额外放宽的松口幅度。",
+        description="面对这类人追问保密设定时，额外放宽的松口幅度。",
         json_schema_extra={"label": "松口加成"},
     )
 
@@ -73,15 +73,15 @@ def default_tags():
 
 
 class AffinityConfig(PluginConfigBase):
-    """根据近期真实有效的互动，在人工标签锚点附近柔和微调亲疏感与搭话积极度。刷水话不涨分，长期不聊会自动回到人工设定基准；群聊和私聊分开统计。"""
+    """根据近期互动情况微调好感度与回复积极度，群聊与私聊分开计算。"""
 
     enabled: bool = Field(
         default=True,
-        description="开启后温和随近期互动波动搭话意愿，关闭则死守标签里的固定基准。",
+        description="开启后根据近期互动温和调整好感度与搭话积极度，关闭则固定使用标签基准。",
         json_schema_extra={
-            "label": "启用热络度",
+            "label": "启用好感度",
             "order": 1,
-            "hint": "不会出现数值刷爆或掉成陌生人的问题，始终围绕人工锚点小幅摆动。",
+            "hint": "设有单日对数上限与半衰期回落，始终围绕标签设定基准小幅波动。",
         },
     )
     timezone: str = Field(
@@ -90,33 +90,33 @@ class AffinityConfig(PluginConfigBase):
         json_schema_extra={"label": "统计时区", "hidden": True},
     )
     active_hint: str = Field(
-        default="最近聊得挺热乎",
+        default="最近常聊",
         description="近期互动明显升温时，附在关系提示后的短语。",
         json_schema_extra={
-            "label": "热络提示语",
+            "label": "好感提示语",
             "order": 2,
-            "placeholder": "例如：最近经常聊到一起",
-            "hint": "需开启下方的“提示里带上热络语”才会在对话提示里露出。",
+            "placeholder": "例如：最近常聊",
+            "hint": "需开启下方的“附带好感提示”才会在对话提示中体现。",
         },
     )
     show_dynamic_hint: bool = Field(
         default=False,
-        description="开启后，关系近期升温时会把上面那句短语带进对话提示里。",
+        description="开启后，好感度高于基准时会把提示语附在关系提示中。",
         json_schema_extra={
-            "label": "提示里带上热络语",
+            "label": "附带好感提示",
             "order": 3,
-            "hint": "默认关闭以保持关系提示克制不冗长；打开后最近聊得热的人会带上热络提示。",
+            "hint": "默认关闭以保持提示精简；开启后最近常聊的人会附带好感提示语。",
         },
     )
     half_life_days: float = Field(
         default=7,
         gt=0,
         le=365,
-        description="多久没怎么聊之后，升温出来的热络感会减半回落。",
+        description="长期未互动时，好感度增量衰减一半所需的天数。",
         json_schema_extra={
             "label": "回落半衰期（天）",
             "order": 4,
-            "hint": "单位：天（默认 7）。几天不联系后多余的热度逐步消退，最终停在标签自带的“基础亲疏度”。",
+            "hint": "单位：天（默认 7）。几天不联系后额外的好感度会逐步回落到标签基准值。",
         },
     )
     day_gain: float = Field(
@@ -254,34 +254,34 @@ class Person(PluginConfigBase):
     )
     is_bot: bool = Field(
         default=False,
-        description="如果是群里的其他 Bot，请勾上。",
-        json_schema_extra={"label": "是同行 Bot"},
+        description="如果是群里的其他 Bot，请勾选。",
+        json_schema_extra={"label": "是其他 Bot"},
     )
     owner_name: str = Field(
         default="",
-        description="仅同行 Bot 填写：这是谁家的 Bot。",
+        description="仅其他 Bot 填写：该 Bot 的所属人称呼。",
         json_schema_extra={
-            "label": "谁家的 Bot",
-            "placeholder": "非 Bot 留空；同行 Bot 写主人称呼，如：阿明",
+            "label": "Bot 归属",
+            "placeholder": "非 Bot 留空；其他 Bot 写主人称呼，如：阿明",
         },
     )
     bot_role: str = Field(
         default="",
-        description="仅同行 Bot 填写：它大致是什么角色。",
+        description="仅其他 Bot 填写：它的用途或定位。",
         json_schema_extra={
             "label": "Bot 定位",
-            "placeholder": "非 Bot 留空；同行 Bot 写定位，如：群管、点歌机",
+            "placeholder": "非 Bot 留空；其他 Bot 写定位，如：群管、点歌机",
         },
     )
     custom_note: str = Field(
         default="",
-        description="补充一点关于这个人的硬备注。",
-        json_schema_extra={"label": "补充备注", "placeholder": "选填一句话硬备注，如：经常熬夜、不爱听剧透"},
+        description="关于这个人的补充说明。",
+        json_schema_extra={"label": "补充备注", "placeholder": "选填备注，如：经常熬夜、不爱听剧透"},
     )
     persona_master: bool = Field(
         default=False,
-        description="对话层老熟人标记（只影响聊天亲切感，不开放管理命令权限）。",
-        json_schema_extra={"label": "对话老熟人"},
+        description="对话层的熟人标记，不影响管理命令权限。",
+        json_schema_extra={"label": "熟人标记"},
     )
 
 
@@ -371,11 +371,11 @@ class Config(PluginConfigBase):
     )
     people: list[Person] = Field(
         default_factory=list,
-        description="登记熟人、群友或同行 Bot。",
+        description="登记熟人、群友或其他 Bot。",
         json_schema_extra={
             "label": "人物名单",
             "order": 3,
-            "hint": "每条必填「用户账号 + 称呼 + 关系标签」；如果是群里的其他 Bot，务必勾选“是同行 Bot”并填“谁家的 Bot”与“Bot 定位”，见闻和生活插件会自动屏蔽同行 Bot 防互刷。",
+            "hint": "每条必填「用户账号 + 称呼 + 关系标签」；如果是群里的其他 Bot，请勾选“是其他 Bot”并填写归属与定位，见闻和作息插件会自动过滤这些 Bot。",
         },
     )
     admins: list[Admin] = Field(
