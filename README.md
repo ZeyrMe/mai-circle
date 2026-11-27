@@ -2,6 +2,13 @@
 
 可以自定义的人物标识和好感度系统
 
+![Version](https://img.shields.io/badge/version-0.2.0-brightgreen)
+![MaiBot](https://img.shields.io/badge/MaiBot-1.4.8%2B-2f81f7)
+![SDK](https://img.shields.io/badge/SDK-2.23.0-0e8a16)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776ab)
+![Standalone](https://img.shields.io/badge/独立运行-支持-blue)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 ## 功能介绍
 
 - **自定义人物标签**：在标签字典中自由设置称呼模板、基础亲疏度、说话意愿倍率与私密话题松口加成，一人可同时挂多个标签。
